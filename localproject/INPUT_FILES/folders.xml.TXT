@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<catalog>
+   <folder>
+      <path>N:\3-2\Reading Course</path>
+   </folder>
+   <folder>
+      <path>N:\3-2\Reading Course2</path>
+   </folder>
+   <folder>
+      <path>N:\3-2\PMFM</path>
+   </folder>
+   <folder>
+      <path>N:\Udacity - Developing Scalable App in Python\Lesson 1 - Scalability Basics</path>
+   </folder>
+   <folder>
+	<path>O:\Mr Robot Complete 720p x265 HEVC-PSA</path>
+   </folder>
+   <folder>
+	<path>N:\SYSTEM DRIVERS</path>
+   </folder>	
+</catalog>
+
+
+
+
+
+

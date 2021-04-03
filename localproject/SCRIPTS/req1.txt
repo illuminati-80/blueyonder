@@ -1,0 +1,94 @@
+﻿$workdir="C:\Users\lappy\Desktop\jda"
+$xmlfoldloc="$workdir\folders.xml.TXT"
+$xmlfileloc="$workdir\files.xml.TXT"
+
+#creating directory 
+New-Item -Path $workdir -Name "backup" -ItemType "directory" -ErrorAction SilentlyContinue
+
+$logfile="$workdir\logfilereq1.txt"
+New-Item -Path "$logfile" -type File -ErrorAction SilentlyContinue
+    
+#######################################     folders.xml   ################################### 
+    
+#creating load csv file with proper fields
+
+$outputfilename="output_"+ (get-date -Format "yyyy/MM/dd HH-mm-ss") + ".csv"
+$outfilepath="C:\Users\lappy\Desktop\jda\$outputfilename"
+$header=@('"Customer_Name","Server_Name","Folder_Path","File_Name","Size (kb)","Modified"')
+Add-Content -path $outfilepath -Value $header
+
+
+#storing folders.xml data 
+$folderdata=[XML](Get-Content $xmlfoldloc)
+
+#saves folder path from folder.xml -> loops through all files inside the folder directory -> append output.csv
+
+write-output ("["+ (Get-Date -Format "yyyy/MM/dd HH-mm-ss")+ "]-- program starts") | Out-File $logfile -Append
+foreach($foldir in $folderdata.catalog.folder){
+    $folpath=$foldir.path
+    #write-output $folpath
+    if(!(test-path $folpath)){
+        write-output ("["+ (Get-Date -Format "yyyy/MM/dd HH-mm-ss")+ "]-- "+$folpath+" folder does not exist") | Out-File $logfile -Append
+        Continue
+    }
+    write-output ("["+ (Get-Date -Format "yyyy/MM/dd HH-mm-ss")+ "]-- "+$folpath+" folder exists..files will be scanned now") | Out-File $logfile -Append
+    $colum1="custome_unknwn"
+    $colum2="srver_unknown"
+    
+    $fileinsidefolder=Get-ChildItem -Path $folpath -File -Recurse | Select-Object name,fullname,Length, @{Name='LastWriteTime';Expression={Get-date $_.LastWriteTime -Format 'yyyy/MM/dd HH-mm-ss'}}
+    
+    for($i=0;$i -lt $fileinsidefolder.Length;$i++)
+    {
+        
+        $colum3=split-path $fileinsidefolder[$i].FullName 
+        $colum4= $fileinsidefolder[$i].fullname
+        $colum5= [math]::round(($fileinsidefolder[$i].Length/1KB), 2)
+        $colum6= $fileinsidefolder[$i].LastWriteTime
+        $finalrow="$colum1,$colum2,$colum3,$colum4,$colum5,$colum6"
+        
+        $finalrow| Add-Content -Path $outfilepath
+    }
+    write-output ("["+ (Get-Date -Format "yyyy/MM/dd HH-mm-ss")+ "]-- output created with file information") | Out-File $logfile -Append
+}
+write-output ("["+ (Get-Date -Format "yyyy/MM/dd HH-mm-ss")+ "]-- all files information stored, program ends") | Out-File $logfile -Append
+
+
+
+###########################    files.xml    ############################
+
+
+
+
+
+
+#retrieving file info 
+$filedata=[XML](Get-Content $xmlfileloc)
+
+
+#read files.xml and rename and copy files into backup folder
+write-output ("["+ (Get-Date -Format "yyyy/MM/dd HH-mm-ss")+ "]-- FILES PROGRAM STARTS") | Out-File $logfile -Append
+foreach($filedir in $filedata.catalog.filelocation){
+    $filepath=$filedir.path
+    #write-output $filepath
+    if(!(test-path $filepath)){
+        write-output ("["+ (Get-Date -Format "yyyy/MM/dd HH-mm-ss")+ "]-- "+$filepath+" file des not exist") | Out-File $logfile -Append
+        Continue
+    }    
+   write-output ("["+ (Get-Date -Format "yyyy/MM/dd HH-mm-ss")+ "]-- "+$filepath+" file exists, copying is in progress") | Out-File $logfile -Append            
+   $fileprop=Get-ChildItem $filepath | Select-Object Name,BaseName,Extension -ErrorAction SilentlyContinue
+    
+   $ext=$fileprop.Extension
+   $newname=$fileprop.BaseName + "_" + (Get-Date -Format "yyyy/MM/dd HH-mm-ss") + $ext
+   $fullname=$fileprop.Name
+   #write-output $newname
+   Copy-Item -path $filepath -Destination "$workdir\backup\$newname" -ErrorAction SilentlyContinue
+   write-output ("["+ (Get-Date -Format "yyyy/MM/dd HH-mm-ss")+ "]-- File copied to backup folder") | Out-File $logfile -Append
+}
+write-output ("["+ (Get-Date -Format "yyyy/MM/dd HH-mm-ss")+ "]-- all files copied, program ends") | Out-File $logfile -Append
+
+
+
+
+###########################################################
+
+Get-ChildItem -Path $outfilepath

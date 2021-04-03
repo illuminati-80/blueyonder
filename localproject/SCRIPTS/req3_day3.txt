@@ -1,0 +1,63 @@
+﻿
+
+#########################################################
+
+
+$workdir="C:\Users\lappy\Desktop\jda"
+
+$logfile="$workdir\logfilereq3.txt"
+New-Item -Path "$logfile" -type File -ErrorAction SilentlyContinue
+
+#creating finaloutput file3 
+$outputfilename="file3_"+ (get-date -Format "yyyy/MM/dd HH-mm-ss") + ".csv"
+$file3path="$workdir\$outputfilename"
+$header=@('"Customer_Name","Server_Name","Folder_Path","File_Name","Size (kb)","Modified","Modified_Type"')
+Add-Content -path $file3path -Value $header
+
+
+#searching and storing 2 recent output files
+$filelist=Get-ChildItem -Path $workdir -Recurse -Include output_* |  Select-Object fullname, basename | Sort-Object -Property BaseName -Descending
+$file1=Import-Csv -path $filelist[1].fullname | sort File_Name -Descending
+$file2=Import-Csv -path $filelist[0].fullname | sort File_Name -Descending
+$propsToCompare='File_Name' 
+
+
+#storing files not found in either of the files 
+$Results= Compare-Object  $file1 $file2 -Property $propsToCompare | Select-Object -ExpandProperty $propsToCompare
+
+
+write-output ("["+ (Get-Date -Format "yyyy/MM/dd HH-mm-ss")+ "]-- PROGRAM STARTS") | Out-File $logfile -Append
+
+#Appending modified files info from file 2 to file3
+$file2temp=Import-Csv -path $filelist[0].fullname| Where-Object {$_.$propsToCompare -notin $Results} | sort File_Name -Descending
+$file1temp=Import-Csv -path $filelist[1].fullname| Where-Object {$_.$propsToCompare -notin $Results} | sort File_Name -Descending
+$filecount=$file1temp.count
+for($i=0;$i -le $filecount;$i++){
+    if($file1temp[$i].Modified -ne $file2temp[$i].Modified){
+        $file2temp[$i] | Select-Object *,@{Name='Modified_Type';Expression={'U'}}  | export-csv -Path $file3path -Append
+        write-output ("["+ (Get-Date -Format "yyyy/MM/dd HH-mm-ss")+ "]-- "+$file2temp[$i].File_Name+" has been modified") | Out-File $logfile -Append
+    } 
+    #else{
+    #    $file2temp[$i] | Select-Object *,@{Name='Modified_Type';Expression={'NU'}}  | export-csv -Path $file3path -Append
+    #    write-output ("["+ (Get-Date -Format "yyyy/MM/dd HH-mm-ss")+ "]-- "+$file2temp[$i].File_Name+" has NOT been modified") | Out-File $logfile -Append
+    #}  
+}
+
+
+#Appending created files info from file 2 to file3
+$filesadded=$file2 | Where-Object {$_.$propsToCompare -in $Results} 
+$filesadded | Select-Object *,@{Name='Modified_Type';Expression={'A'}} | export-csv -Path $file3path -Append 
+foreach($fileaddobject in $filesadded){
+    write-output ("["+ (Get-Date -Format "yyyy/MM/dd HH-mm-ss")+ "]-- "+$fileaddobject.File_Name+" has been added") | Out-File $logfile -Append
+}
+
+
+#Appending deleted files info from file 1 to file3
+$filesdeleted=$file1 | Where-Object {$_.$propsToCompare -in $Results} 
+$filesdeleted | Select-Object *,@{Name='Modified_Type';Expression={'D'}} | export-csv -Path $file3path -Append 
+foreach($filedelobject in $filesdeleted){
+    write-output ("["+ (Get-Date -Format "yyyy/MM/dd HH-mm-ss")+ "]-- "+$filedelobject.File_Name+" has been deleted") | Out-File $logfile -Append
+}
+
+write-output ("["+ (Get-Date -Format "yyyy/MM/dd HH-mm-ss")+ "]-- PROGRAM ENDS #######################################################################") | Out-File $logfile -Append
+

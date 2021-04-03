@@ -1,0 +1,40 @@
+﻿$workdir="C:\Users\lappy\Desktop\jda"
+$xmlfileloc="$workdir\files_req4.xml.TXT"
+#creating directory 
+New-Item -Path $workdir -Name "backup_req4" -ItemType "directory" -ErrorAction SilentlyContinue
+$logfile="$workdir\logfilereq4.txt"
+New-Item -Path "$logfile" -type File -ErrorAction SilentlyContinue
+
+$filelist=Get-ChildItem -Path $workdir -Recurse -Include file3_* |  Select-Object fullname, basename | Sort-Object -Property BaseName -Descending
+$diff_file=Import-Csv -path $filelist[0].fullname | sort File_Name -Descending
+
+###########################    files.xml    ############################
+
+#retrieving file info 
+$filedata=[XML](Get-Content $xmlfileloc)
+
+write-output ("["+ (Get-Date -Format "yyyy/MM/dd HH-mm-ss")+ "]-- PROGRAM STARTS") | Out-File $logfile -Append
+
+#Files NOT compared if diff_file is empty
+if($diff_file.count -ge 0){
+
+    foreach($filedir in $filedata.catalog.filelocation){
+        $filepath=$filedir.path
+        if(!(test-path $filepath)){
+            #write-output ("["+ (Get-Date -Format "yyyy/MM/dd HH-mm-ss")+ "]-- "+$filepath+" file des not exist") | Out-File $logfile -Append
+            Continue
+        }
+    
+        for($i=0;($i -le $diff_file.count); $i++){
+            if($diff_file[$i].File_Name -eq $filepath){
+                if(($diff_file[$i].Modified_Type -eq 'A') -OR ($diff_file[$i].Modified_Type -eq 'U')){
+                    $fileprop=Get-ChildItem $filepath | Select-Object Name,BaseName,Extension -ErrorAction SilentlyContinue
+                    $newname=$fileprop.BaseName + "_" + (Get-Date -Format "yyyy/MM/dd HH-mm-ss") + $fileprop.Extension
+                    Copy-Item -path $filepath -Destination "$workdir\backup_req4\$newname" -ErrorAction SilentlyContinue
+                    write-output ("["+ (Get-Date -Format "yyyy/MM/dd HH-mm-ss")+ "]-- "+$fileprop.BaseName+" file has been copied") | Out-File $logfile -Append
+                }
+                break
+            }
+        }     
+    }  
+}
